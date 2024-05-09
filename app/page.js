@@ -1,113 +1,268 @@
+'use client'
 import Image from "next/image";
+import { db } from "./firebaseConfig"
+import { collection, addDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, doc, updateDoc } from "firebase/firestore";
+import React, { useState, useEffect } from 'react';
+import { async } from "@firebase/util";
+
+
+
+async function addTodoFirebase(title, details, dueDate) {
+  try {
+    const docRef = await addDoc(collection(db, "todos"), {
+      title: title,
+      details: details,
+      dueDate: dueDate,
+      createdAt: serverTimestamp(),
+    });
+    console.log("Todo added with ID: ", docRef.id);
+    alert("data added");
+    return true;
+  } catch (error) {
+    console.error("Error adding todo :", error);
+    return false;
+  }
+}
+
+async function fetchTodosFromFirestore() {
+  const todoscollection = collection(db, "todos");
+  const querySnapshot = await getDocs(query(todoscollection, orderBy("createdAt", "desc")));
+  const todos = [];
+  querySnapshot.forEach((doc) => {
+    const todoData = doc.data();
+    todos.push({ id: doc.id, ...todoData });
+  });
+  return todos;
+}
+
+async function deleteTodoFromFirestore(todoId) {
+  try {
+    console.log("Attempting to delete todo with ID: ", todoId);
+    await deleteDoc(doc(db, "todos", todoId));
+    return todoId;
+  } catch (error) {
+    console.log("Error deleting todo: ", error);
+    return null;
+  }
+
+}
 
 export default function Home() {
+  const [title, setTitle] = useState("");
+  const [details, setDetails] = useState("")
+  const [dueDate, setdueDate] = useState("")
+
+  // state to hold the list of todos
+  const [todos, setTodos] = useState([]);
+
+  // state to hold the selected todo for update
+  const [selectedTodo, setSelectedTodo] = useState(null);
+
+  // state to track whether the form is in update mode
+  const [isUpdateMode, setIsUpdateMode] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isUpdateMode) {
+      if (selectedTodo) {
+        try {
+          const updatedTodo = {
+            title,
+            details,
+            dueDate,
+          };
+          const todoRef = doc(db, "todos", selectedTodo.id);
+          await updateDoc(todoRef, updatedTodo);
+
+          //reset the form fields
+          setTitle("");
+          setDetails("");
+          setdueDate("");
+          setSelectedTodo(null);
+          setIsUpdateMode(false);
+
+          alert("Todo updated successfully !!")
+        } catch (error) {
+          console.error("Error updating todo:", error)
+        }
+      }
+    } else {
+      const added = await addTodoFirebase(title, details, dueDate);
+      if (added) {
+        setTitle("");
+        setDetails("");
+        setdueDate("");
+
+        alert("Todo added to firestore successfully !! ")
+      }
+    }
+  };
+
+  // fetch todos from firestore on components mount
+
+  useEffect(() => {
+    async function fetchTodos() {
+      const todos = await fetchTodosFromFirestore();
+      setTodos(todos);
+    }
+    fetchTodos();
+  }, []);
+
+  // function to handle "update button click"
+  const handleUpdateClick = (todo) => {
+    //set the selected todos values to the from fields 
+    setTitle(todo.title || "");
+    setDetails(todo.details || "");
+    setdueDate(todo.dueDate || "");
+
+    setSelectedTodo(todo);
+    setIsUpdateMode(true);
+  }
+  // fetch todos from firestor on components mount 
+  useEffect(() => {
+    async function fetchTodos() {
+
+      const todos = await fetchTodosFromFirestore();
+      setTodos(todos);
+    }
+    fetchTodos();
+  }, []);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main className="flex flex-1 items-center justify-center flex-col md:flex-row min-h-screen ">
+      <section className=" flex  items-center md:flex-col md:justify-start mx-auto ">
+
+
+        <h1> Todo List </h1>
+
+        <div className='p-6 md:p-12 mt-10 rounded-lg shadow-xl w-full max-w-lg bg-white'>
+          <h2 className="text-center text-2xl font-bold leading-9 text-gray-700">create todo</h2>
+
+          <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+            {/* for title*/}
+            <div>
+              <lable htmlFor='title' className="block text-sm font-medium leading-6 text-gray-300">
+                Title
+              </lable>
+              <div className="mt-2">
+                <input
+                  id="title"
+                  name='title'
+                  type='text'
+                  autoComplete='off'
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className='w-full rounded border py-2 pl-2 text-gray-900 shadow ring'     >
+                </input>
+              </div>
+            </div>
+
+            {/* for Details*/}
+
+            <div>
+              <lable htmlFor='title' className="block text-sm font-medium leading-6 text-gray-300">
+                Details
+              </lable>
+              <div className="mt-2">
+                <textarea
+                  id="details"
+                  name='details'
+                  rows="4"
+                  autoComplete='off'
+                  required
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  className='w-full rounded border py-2 pl-2 text-gray-900 shadow ring'     >
+                </textarea>
+              </div>
+            </div>
+
+
+            {/* for Date */}
+
+            <div>
+              <lable htmlFor='dueDate' className="block text-sm font-medium leading-6 text-gray-300">
+                DueDate
+              </lable>
+              <div className="mt-2">
+                <input
+                  id="dueDate"
+                  name='dueDate'
+                  type='date'
+                  autoComplete='off'
+                  required
+                  value={dueDate}
+                  onChange={(e) => setdueDate(e.target.value)}
+                  className='w-full rounded border py-2 pl-2 text-gray-900 shadow ring'     >
+                </input>
+              </div>
+            </div>
+
+            <div>
+              <button type='submit' className="  w-full text-white bg-black rounded-md p-2 shadow ring-5 font-bold hover:bg-gray-950">
+                {isUpdateMode ? "Update Todo" : "Save Note"}
+
+              </button>
+            </div>
+          </form>
         </div>
-      </div>
+      </section>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+      {/* right section */}
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
+      <section className="md:w 1/2 md:max-h-screen overflow-y-auto md:ml-10 mt-0 mx-auto">
+        {/*Todo List*/}
+
+        <div className="p-1 md:p-10 mt-10 rounded-lg shadow-xl w-full max-w-lg bg-white">
+          <h2 className="text-center text-2xl font-bold leading-9 text-gray-900">
+            Todo List
           </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+          {/*Todo Item*/}
+          <div className="mt-6 space-y-6">
+            {todos.map((todo) => (
+              <div key={todo.id} className="border p-4 rounded-md shadow-md">
+                <h3 className="text-lg font-semibold text-gray-900 break-words">{todo.title} </h3>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
+                <p className="text-gray-900 multiline break-words">
+                  {todo.details}
+                </p>
+                <p className=" text-sm text-gray-500">
+                  Due Date: {todo.dueDate}
+                </p>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+                <div className="mt-4 space-x-6">
+                   <button
+                   type="button"
+                   className="px-3 py-1 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-md"
+                   onClick={()=>handleUpdateClick(todo)}
+                   >
+                    Update
+                   </button>
+                   <button
+                   type="button"
+                   className="px-3 py-1 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-md"
+                   onClick={async()=>{
+                    const deletedTodoId = await deleteTodoFromFirestore(todo.id);
+                    if(deletedTodoId){
+                      const updatedTodo = todos.filter((t)=>t.id !== deletedTodoId);
+                      setTodos(updatedTodo);
+                    }
+                   }}
+                   >
+                    Delete
+                   </button>
+
+                   
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+
+      </section>
     </main>
   );
 }

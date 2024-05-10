@@ -7,12 +7,11 @@ import { useRouter } from 'next/navigation';
 const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const createUserWithEmailAndPassword = createUserWithEmailAndPasswordFirebase; // Rename the local function
-  const router = useRouter();
+  const createUserWithEmailAndPassword = createUserWithEmailAndPasswordFirebase; 
 
   const handleSignUp = async () => {
     try {
-        const res = await createUserWithEmailAndPassword(auth, email, password); // Pass auth as the first argument
+        const res = await createUserWithEmailAndPassword(auth, email, password); 
         console.log({res})
         sessionStorage.setItem('user', true)
         setEmail('');

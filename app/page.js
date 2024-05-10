@@ -1,9 +1,13 @@
 'use client'
-import Image from "next/image";
 import { db } from "./firebaseConfig"
 import { collection, addDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, doc, updateDoc } from "firebase/firestore";
 import React, { useState, useEffect } from 'react';
 import { async } from "@firebase/util";
+import { useRouter } from "next/navigation";
+import { auth } from "./firebaseConfig";
+import { signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+
 
 
 
@@ -51,6 +55,14 @@ export default function Home() {
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("")
   const [dueDate, setdueDate] = useState("")
+  const [user] = useState(auth);
+  const router = useRouter()
+
+  console.log({ user })
+
+  if (!user) {
+    router.push('./sign-up')
+  }
 
   // state to hold the list of todos
   const [todos, setTodos] = useState([]);
@@ -131,6 +143,12 @@ export default function Home() {
   return (
     <main className="flex flex-1 items-center justify-center flex-col md:flex-row min-h-screen ">
       <section className=" flex  items-center md:flex-col md:justify-start mx-auto ">
+        <button onClick={() => {
+          signOut(auth)
+          sessionStorage.removeItem('user')
+        }}>
+          Log out
+        </button>
 
 
         <h1> Todo List </h1>
@@ -233,28 +251,28 @@ export default function Home() {
                 </p>
 
                 <div className="mt-4 space-x-6">
-                   <button
-                   type="button"
-                   className="px-3 py-1 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-md"
-                   onClick={()=>handleUpdateClick(todo)}
-                   >
+                  <button
+                    type="button"
+                    className="px-3 py-1 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-md"
+                    onClick={() => handleUpdateClick(todo)}
+                  >
                     Update
-                   </button>
-                   <button
-                   type="button"
-                   className="px-3 py-1 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-md"
-                   onClick={async()=>{
-                    const deletedTodoId = await deleteTodoFromFirestore(todo.id);
-                    if(deletedTodoId){
-                      const updatedTodo = todos.filter((t)=>t.id !== deletedTodoId);
-                      setTodos(updatedTodo);
-                    }
-                   }}
-                   >
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-md"
+                    onClick={async () => {
+                      const deletedTodoId = await deleteTodoFromFirestore(todo.id);
+                      if (deletedTodoId) {
+                        const updatedTodo = todos.filter((t) => t.id !== deletedTodoId);
+                        setTodos(updatedTodo);
+                      }
+                    }}
+                  >
                     Delete
-                   </button>
+                  </button>
 
-                   
+
                 </div>
               </div>
             ))}
@@ -263,6 +281,7 @@ export default function Home() {
         </div>
 
       </section>
+
     </main>
   );
 }

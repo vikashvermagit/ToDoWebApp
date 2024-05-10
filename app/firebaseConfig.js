@@ -1,21 +1,26 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCJMGjHaYIU4F3Ou_JeY7HpsRZaibU7dxI",
-  authDomain: "todoapp-39f47.firebaseapp.com",
-  projectId: "todoapp-39f47",
-  storageBucket: "todoapp-39f47.appspot.com",
-  messagingSenderId: "850147136904",
-  appId: "1:850147136904:web:006f147c0e997245b2963d",
-  measurementId: "G-NRMSMCNKZN"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp(); // Changed condition and usage of getApp()
+
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 console.log("Firebase initialized with Firestore:", db);
 
-
-export{ db };
+export { db };
+export { app, auth };
